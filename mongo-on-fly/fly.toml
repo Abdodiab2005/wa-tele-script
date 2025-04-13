@@ -1,0 +1,13 @@
+app = "mongo-on-fly"
+primary_region = "cdg"
+
+[env]
+  MONGO_INITDB_ROOT_USERNAME = "admin"
+  MONGO_INITDB_ROOT_PASSWORD = "mypassword"
+
+[[mounts]]
+  source = "mongo_data"
+  destination = "/data/db"
+
+[experimental]
+  auto_rollback = true
