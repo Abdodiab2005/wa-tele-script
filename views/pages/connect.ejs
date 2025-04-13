@@ -1,0 +1,256 @@
+<div class="row">
+  <div class="col-lg-8 mx-auto">
+    <h2 class="mb-4">Admin Connection Panel</h2>
+
+    <div class="alert alert-info">
+      <h5>Connection Status:</h5>
+      <ul class="mb-0">
+        <li>
+          WhatsApp:
+          <span id="whatsapp-status-badge" class="badge <%= whatsapp.isConnected ? 'bg-success' : 'bg-danger' %>">
+            <%= whatsapp.isConnected ? 'Connected ✅' : 'Disconnected ❌' %>
+          </span>
+        </li>
+        <li>
+          Telegram:
+          <span id="telegram-status-badge" class="badge <%= telegram.hasToken ? 'bg-success' : 'bg-danger' %>">
+            <%= telegram.hasToken ? 'Token Saved ✅' : 'No Token ❌' %>
+          </span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- WhatsApp Connection Panel -->
+    <div class="card mb-4">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">WhatsApp Connection</h5>
+      </div>
+      <div class="card-body">
+        <div id="whatsapp-container">
+          <% if (whatsapp.isConnected) { %>
+          <div class="text-center">
+            <p class="alert alert-success">WhatsApp is connected successfully! ✅</p>
+          </div>
+          <% } else { %>
+          <div class="text-center" id="qr-container">
+            <% if (whatsapp.qrCode) { %>
+            <p>Scan this QR code with WhatsApp on your phone:</p>
+            <img src="<%= whatsapp.qrCode %>" alt="WhatsApp QR Code" class="img-fluid qr-code mb-3" id="qr-code" />
+            <p class="text-muted small">QR code will expire after 60 seconds</p>
+            <button id="refresh-qr-btn" class="btn btn-outline-primary mt-2">
+              <i class="bi bi-arrow-clockwise"></i> Refresh QR Code
+            </button>
+            <div id="qr-status-message" class="alert alert-info mt-3 d-none"></div>
+            <% } else { %>
+            <p>Loading QR code... Please wait.</p>
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <div id="qr-status-message" class="alert alert-info mt-3 d-none"></div>
+            <% } %>
+          </div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Telegram Bot Token Panel -->
+    <div class="card">
+      <div class="card-header bg-info text-white">
+        <h5 class="mb-0">Telegram Bot Configuration</h5>
+      </div>
+      <div class="card-body">
+        <form id="telegram-token-form">
+          <div class="mb-3">
+            <label for="telegram-token" class="form-label">Telegram Bot Token</label>
+            <div class="input-group">
+              <input
+                type="text"
+                class="form-control"
+                id="telegram-token"
+                placeholder="Enter your Telegram bot token"
+                value="<%= telegram.token %>" />
+              <button class="btn btn-primary" type="submit">Save Token</button>
+            </div>
+            <div class="form-text">
+              You can get a bot token from <a href="https://t.me/BotFather" target="_blank">@BotFather</a> on Telegram.
+            </div>
+          </div>
+        </form>
+        <div id="telegram-alert" class="mt-3 d-none"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Check WhatsApp status periodically
+  function checkWhatsAppStatus() {
+    fetch("/connect/whatsapp-status")
+      .then((response) => response.json())
+      .then((data) => {
+        const statusBadge = document.getElementById("whatsapp-status-badge");
+        const statusContainer = document.getElementById("whatsapp-container");
+
+        // Update status badge
+        if (data.isConnected) {
+          statusBadge.textContent = "Connected ✅";
+          statusBadge.className = "badge bg-success";
+
+          statusContainer.innerHTML = `
+                        <div class="text-center">
+                            <p class="alert alert-success">WhatsApp is connected successfully! ✅</p>
+                        </div>
+                    `;
+        } else {
+          statusBadge.textContent = `Disconnected (${data.status}) ❌`;
+          statusBadge.className = "badge bg-danger";
+
+          let content;
+          if (data.qrCode) {
+            content = `
+                            <div class="text-center" id="qr-container">
+                                <p>Scan this QR code with WhatsApp on your phone:</p>
+                                <img src="${data.qrCode}" alt="WhatsApp QR Code" class="img-fluid qr-code mb-3" id="qr-code">
+                                <p class="text-muted small">QR code will expire after 60 seconds</p>
+                                <button id="refresh-qr-btn" class="btn btn-outline-primary mt-2">
+                                    <i class="bi bi-arrow-clockwise"></i> Refresh QR Code
+                                </button>
+                                <div id="qr-status-message" class="alert alert-info mt-3 d-none"></div>
+                            </div>
+                        `;
+          } else {
+            content = `
+                            <div class="text-center" id="qr-container">
+                                <p>Loading QR code... Please wait.</p>
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <div id="qr-status-message" class="alert alert-info mt-3 d-none"></div>
+                            </div>
+                        `;
+          }
+          statusContainer.innerHTML = content;
+        }
+      })
+      .catch((error) => {
+        console.error("Error checking WhatsApp status:", error);
+      });
+  }
+
+  // Handle Telegram token form submission
+  document.getElementById("telegram-token-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    const token = document.getElementById("telegram-token").value.trim();
+    const alertContainer = document.getElementById("telegram-alert");
+
+    if (!token) {
+      showAlert(alertContainer, "Please enter a valid Telegram bot token", "danger");
+      return;
+    }
+
+    fetch("/connect/telegram-token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          showAlert(alertContainer, data.message, "success");
+          document.getElementById("telegram-status-badge").textContent = "Token Saved ✅";
+          document.getElementById("telegram-status-badge").className = "badge bg-success";
+        } else {
+          showAlert(alertContainer, data.message, "danger");
+        }
+      })
+      .catch((error) => {
+        showAlert(alertContainer, "Error saving token: " + error.message, "danger");
+      });
+  });
+
+  // Helper function to show alerts
+  function showAlert(element, message, type) {
+    element.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    element.classList.remove("d-none");
+  }
+
+  // Add QR code refresh functionality
+  document.addEventListener("DOMContentLoaded", function () {
+    // Check if the refresh button exists
+    const refreshQrBtn = document.getElementById("refresh-qr-btn");
+    if (refreshQrBtn) {
+      refreshQrBtn.addEventListener("click", async function () {
+        const statusMessage = document.getElementById("qr-status-message");
+        try {
+          statusMessage.textContent = "Requesting new QR code...";
+          statusMessage.classList.remove("d-none", "alert-danger");
+          statusMessage.classList.add("alert-info");
+
+          // Disable button while processing
+          refreshQrBtn.disabled = true;
+
+          // Request QR code refresh
+          const response = await fetch("/connect/refresh-qr", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            statusMessage.textContent = "QR code refresh requested. Page will reload in 3 seconds.";
+            // Reload the page after a short delay to show the new QR
+            setTimeout(() => window.location.reload(), 3000);
+          } else {
+            throw new Error(data.message);
+          }
+        } catch (error) {
+          console.error("Error refreshing QR code:", error);
+          statusMessage.textContent = `Error: ${error.message || "Failed to refresh QR code"}`;
+          statusMessage.classList.remove("alert-info");
+          statusMessage.classList.add("alert-danger", "d-none");
+
+          // Re-enable the button
+          refreshQrBtn.disabled = false;
+        }
+      });
+    }
+
+    // Add timeout check to existing status check function
+    const checkWhatsAppStatus = window.checkWhatsAppStatus;
+    if (typeof checkWhatsAppStatus === "function") {
+      const originalFunction = checkWhatsAppStatus;
+      window.checkWhatsAppStatus = function () {
+        originalFunction();
+
+        // Additional code to check for QR expiration
+        fetch("/connect/whatsapp-status")
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.status === "qr_expired" && document.getElementById("qr-code")) {
+              const statusMessage = document.getElementById("qr-status-message");
+              if (statusMessage) {
+                statusMessage.textContent = "QR code has expired. Please click refresh to get a new one.";
+                statusMessage.classList.remove("d-none", "alert-info");
+                statusMessage.classList.add("alert-warning");
+              }
+            }
+          })
+          .catch((error) => console.error("Error checking QR status:", error));
+      };
+    }
+  });
+
+  // Check WhatsApp status initially and then every 5 seconds
+  checkWhatsAppStatus();
+  setInterval(checkWhatsAppStatus, 5000);
+</script>

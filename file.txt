@@ -1,0 +1,4 @@
+aria-label="Channels" // Channels icon
+document.querySelectorAll('div[data-tab="4"]')[0] // Get the channels list 
+document.querySelector('div[aria-label="Channel list"]').children[0].querySelector('span[title]').title // Get channels name
+document.querySelector('div[aria-label="Type an update"]') // Check if there's input 

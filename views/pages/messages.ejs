@@ -1,0 +1,323 @@
+<div class="row">
+  <div class="col-lg-8 mx-auto">
+    <h2 class="mb-4">Send Messages</h2>
+
+    <!-- Message Form -->
+    <div class="card mb-4">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Compose Message</h5>
+      </div>
+      <div class="card-body">
+        <form id="message-form">
+          <!-- Message Content -->
+          <div class="mb-3">
+            <label for="message-content" class="form-label">Message Content</label>
+            <textarea
+              class="form-control"
+              id="message-content"
+              rows="5"
+              placeholder="Enter your message here..."></textarea>
+          </div>
+
+          <!-- Platform Selection -->
+          <div class="mb-3">
+            <label class="form-label">Platforms</label>
+            <div class="d-flex gap-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="whatsapp" id="platform-whatsapp" checked />
+                <label class="form-check-label" for="platform-whatsapp"> WhatsApp </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="telegram" id="platform-telegram" />
+                <label class="form-check-label" for="platform-telegram"> Telegram </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="both" id="platform-both" />
+                <label class="form-check-label" for="platform-both"> Both </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Channel Selection (WhatsApp) -->
+          <div class="mb-3" id="whatsapp-channels-container">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <label class="form-label">WhatsApp Channels</label>
+              <button type="button" id="refresh-channels-btn" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-arrow-clockwise"></i> Refresh Channels
+              </button>
+            </div>
+
+            <div class="channels-list">
+              <% const whatsappChannels = channels.filter(c => c.platform === 'whatsapp' && c.isAdmin); %> <% if
+              (whatsappChannels.length === 0) { %>
+              <div class="alert alert-info">
+                No WhatsApp channels found. Click "Refresh Channels" to scan for channels.
+              </div>
+              <% } else { %>
+              <div class="list-group">
+                <% whatsappChannels.forEach(channel => { %>
+                <label class="list-group-item">
+                  <input
+                    class="form-check-input me-1 channel-checkbox"
+                    type="checkbox"
+                    value="<%= channel._id %>"
+                    data-platform="whatsapp" />
+                  <%= channel.name %>
+                </label>
+                <% }); %>
+              </div>
+              <% } %>
+            </div>
+          </div>
+
+          <!-- Telegram Channels (Placeholder) -->
+          <div class="mb-3" id="telegram-channels-container" style="display: none">
+            <label class="form-label">Telegram Channels</label>
+            <div class="alert alert-warning">Telegram integration will be available in a future update.</div>
+          </div>
+
+          <!-- Schedule Options -->
+          <div class="mb-3">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="schedule-toggle" />
+              <label class="form-check-label" for="schedule-toggle">Schedule for later</label>
+            </div>
+
+            <div id="schedule-controls" class="mt-2" style="display: none">
+              <label for="schedule-datetime" class="form-label">Schedule Date/Time</label>
+              <input type="datetime-local" class="form-control" id="schedule-datetime" />
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="text-end">
+            <button type="submit" class="btn btn-primary">Send Message</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-body text-center p-4">
+        <div class="spinner-border text-primary mb-3" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <h5 id="loading-message">Processing your request...</h5>
+        <p class="text-muted" id="loading-details"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Result Modal -->
+<div class="modal fade" id="resultModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="result-title">Message Status</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="result-body">
+        <!-- Content will be dynamically added here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <a href="/history" class="btn btn-primary">View History</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap JavaScript Bundle with Popper -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  // Initialize Bootstrap components
+  const loadingModal = new bootstrap.Modal(document.getElementById("loadingModal"));
+  const resultModal = new bootstrap.Modal(document.getElementById("resultModal"));
+
+  // Handle platform selection
+  document.querySelectorAll("#platform-whatsapp, #platform-telegram, #platform-both").forEach((checkbox) => {
+    checkbox.addEventListener("change", function () {
+      const whatsappContainer = document.getElementById("whatsapp-channels-container");
+      const telegramContainer = document.getElementById("telegram-channels-container");
+
+      if (this.id === "platform-both" && this.checked) {
+        document.getElementById("platform-whatsapp").checked = false;
+        document.getElementById("platform-telegram").checked = false;
+        whatsappContainer.style.display = "block";
+        telegramContainer.style.display = "block";
+      } else {
+        document.getElementById("platform-both").checked = false;
+
+        if (document.getElementById("platform-whatsapp").checked || document.getElementById("platform-both").checked) {
+          whatsappContainer.style.display = "block";
+        } else {
+          whatsappContainer.style.display = "none";
+        }
+
+        if (document.getElementById("platform-telegram").checked || document.getElementById("platform-both").checked) {
+          telegramContainer.style.display = "block";
+        } else {
+          telegramContainer.style.display = "none";
+        }
+      }
+    });
+  });
+
+  // Handle schedule toggle
+  document.getElementById("schedule-toggle").addEventListener("change", function () {
+    document.getElementById("schedule-controls").style.display = this.checked ? "block" : "none";
+  });
+
+  // Handle refresh channels button
+  document.getElementById("refresh-channels-btn").addEventListener("click", async function () {
+    try {
+      // Show loading modal
+      document.getElementById("loading-message").textContent = "Scanning WhatsApp Channels...";
+      document.getElementById("loading-details").textContent =
+        "This may take a minute. Please keep the browser window open.";
+      loadingModal.show();
+
+      // Make API request to refresh channels
+      const response = await fetch("/messages/refresh-channels", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Refresh the page to show updated channels
+        window.location.reload();
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (error) {
+      console.error("Error refreshing channels:", error);
+      loadingModal.hide();
+
+      // Show error in result modal
+      document.getElementById("result-title").textContent = "Error Refreshing Channels";
+      document.getElementById("result-body").innerHTML = `
+                <div class="alert alert-danger">
+                    ${error.message || "Failed to refresh channels. Please try again."}
+                </div>
+            `;
+      resultModal.show();
+    }
+  });
+
+  // Handle form submission
+  document.getElementById("message-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    try {
+      // Get form values
+      const content = document.getElementById("message-content").value.trim();
+
+      // Get selected platforms
+      const platforms = [];
+      if (document.getElementById("platform-whatsapp").checked) platforms.push("whatsapp");
+      if (document.getElementById("platform-telegram").checked) platforms.push("telegram");
+      if (document.getElementById("platform-both").checked) platforms.push("both");
+
+      // Get selected channels
+      const selectedChannels = Array.from(document.querySelectorAll(".channel-checkbox:checked")).map(
+        (checkbox) => checkbox.value
+      );
+
+      // Get schedule time if enabled
+      const isScheduled = document.getElementById("schedule-toggle").checked;
+      const scheduleTime = isScheduled ? document.getElementById("schedule-datetime").value : null;
+
+      // Validate form
+      if (!content) {
+        alert("Please enter a message");
+        return;
+      }
+
+      if (platforms.length === 0) {
+        alert("Please select at least one platform");
+        return;
+      }
+
+      if (selectedChannels.length === 0) {
+        alert("Please select at least one channel");
+        return;
+      }
+
+      if (isScheduled && !scheduleTime) {
+        alert("Please select a schedule time");
+        return;
+      }
+
+      // Show loading modal
+      document.getElementById("loading-message").textContent = isScheduled
+        ? "Scheduling Message..."
+        : "Sending Message...";
+      document.getElementById("loading-details").textContent = "Please wait while we process your request.";
+      loadingModal.show();
+
+      // Send data to server
+      const response = await fetch("/messages/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content,
+          platforms,
+          channels: selectedChannels,
+          scheduleTime,
+        }),
+      });
+
+      const data = await response.json();
+
+      // Hide loading modal
+      loadingModal.hide();
+
+      // Show result modal
+      if (data.success) {
+        document.getElementById("result-title").textContent = isScheduled ? "Message Scheduled" : "Message Sent";
+        document.getElementById("result-body").innerHTML = `
+                    <div class="alert alert-success">
+                        ${data.message}
+                    </div>
+                `;
+
+        // Reset form
+        this.reset();
+      } else {
+        document.getElementById("result-title").textContent = "Error";
+        document.getElementById("result-body").innerHTML = `
+                    <div class="alert alert-danger">
+                        ${data.message}
+                    </div>
+                `;
+      }
+
+      resultModal.show();
+    } catch (error) {
+      console.error("Error sending message:", error);
+      loadingModal.hide();
+
+      // Show error in result modal
+      document.getElementById("result-title").textContent = "Error";
+      document.getElementById("result-body").innerHTML = `
+                <div class="alert alert-danger">
+                    ${error.message || "Failed to process message. Please try again."}
+                </div>
+            `;
+      resultModal.show();
+    }
+  });
+</script>

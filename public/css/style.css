@@ -1,0 +1,16 @@
+.qr-code {
+  max-width: 300px;
+  border: 1px solid #ddd;
+  padding: 15px;
+  background-color: #fff;
+}
+
+.nav-link.active {
+  font-weight: bold;
+  color: #0d6efd;
+}
+
+/* Add some padding to the main content */
+main {
+  min-height: 60vh;
+}
