@@ -1,15 +1,15 @@
 const Message = require("../models/message");
+const Channel = require("../models/channel");
 const whatsappService = require("./whatsapp");
+const telegramService = require("./telegram");
 const logger = require("../utils/logger");
-const { broadcastMessage } = require("./telegram");
-let schedulerInterval;
 
 /**
- * Initialize the scheduler service
+ * Initialize scheduler service
  */
 function initialize() {
   // Run every 30 seconds
-  schedulerInterval = setInterval(checkScheduledMessages, 30000);
+  setInterval(checkScheduledMessages, 30000);
   logger.info("Message scheduler initialized");
 }
 
@@ -23,7 +23,7 @@ async function checkScheduledMessages() {
     const messages = await Message.find({
       status: "pending",
       scheduledTime: { $lte: now },
-    }).populate("channels");
+    });
 
     if (messages.length > 0) {
       logger.info(`Found ${messages.length} scheduled messages to send`);
@@ -36,27 +36,59 @@ async function checkScheduledMessages() {
         message.status = "sending";
         await message.save();
 
+        // Get all selected channels
+        const selectedChannels = await Promise.all(message.channels.map((channelId) => Channel.findById(channelId)));
+
+        // Filter out any null results
+        const validChannels = selectedChannels.filter((channel) => channel);
+
+        // Group channels by platform
+        const whatsappChannels = validChannels.filter((channel) => channel.platform === "whatsapp");
+        const telegramChannels = validChannels.filter((channel) => channel.platform === "telegram");
+
         const results = [];
 
         // Process WhatsApp messages
-        if (message.platforms.includes("whatsapp") || message.platforms.includes("both")) {
-          // Filter WhatsApp channels
-          const whatsappChannels = message.channels
-            .filter((channel) => channel.platform === "whatsapp")
-            .map((channel) => channel.name);
+        if (whatsappChannels.length > 0) {
+          try {
+            logger.info(`Sending scheduled message to ${whatsappChannels.length} WhatsApp channels`);
+            const whatsappContent = message.formattedContent?.whatsapp || message.content;
 
-          if (whatsappChannels.length > 0) {
-            // Send the message
-            const whatsappResults = await whatsappService.sendChannelMessages(message.content, whatsappChannels);
+            const whatsappResults = await whatsappService.sendChannelMessages(
+              whatsappContent,
+              whatsappChannels.map((c) => c.name)
+            );
 
             results.push(...whatsappResults);
+          } catch (whatsappError) {
+            logger.error("Error sending scheduled WhatsApp messages:", whatsappError);
+            results.push({
+              platform: "whatsapp",
+              status: "failed",
+              error: whatsappError.message,
+              timestamp: new Date(),
+            });
           }
         }
 
-        // Process Telegram messages (placeholder for future)
-        if (message.platforms.includes("telegram") || message.platforms.includes("both")) {
-          // TODO: Implement Telegram sending logic
-          logger.info("Telegram sending is not implemented yet");
+        // Process Telegram messages
+        if (telegramChannels.length > 0) {
+          try {
+            logger.info(`Sending scheduled message to ${telegramChannels.length} Telegram channels`);
+            const telegramContent = message.formattedContent?.telegram || message.content;
+
+            const telegramResults = await telegramService.sendChannelMessages(telegramContent, telegramChannels);
+
+            results.push(...telegramResults);
+          } catch (telegramError) {
+            logger.error("Error sending scheduled Telegram messages:", telegramError);
+            results.push({
+              platform: "telegram",
+              status: "failed",
+              error: telegramError.message,
+              timestamp: new Date(),
+            });
+          }
         }
 
         // Update message with results
@@ -87,15 +119,18 @@ async function checkScheduledMessages() {
 }
 
 /**
- * Schedule a message for sending
+ * Schedule a message for later sending
  * @param {Object} messageData - Message data
  * @returns {Promise<Object>} Created message
  */
 async function scheduleMessage(messageData) {
   try {
-    const message = new Message(messageData);
+    const message = new Message({
+      ...messageData,
+      status: "pending",
+    });
     await message.save();
-    logger.info(`Message scheduled with ID: ${message._id}`);
+    logger.info(`Message scheduled with ID: ${message._id} for ${messageData.scheduledTime}`);
     return message;
   } catch (error) {
     logger.error("Error scheduling message:", error);
@@ -120,31 +155,68 @@ async function sendImmediately(messageData) {
 
     const results = [];
 
-    // Process WhatsApp messages
-    if (messageData.platforms.includes("whatsapp") || messageData.platforms.includes("both")) {
-      // Get channel names
-      const whatsappChannels = (
-        await Promise.all(
-          messageData.channels
-            .filter((channelId) => channelId)
-            .map((channelId) => require("../models/channel").findById(channelId))
-        )
-      )
-        .filter((channel) => channel && channel.platform === "whatsapp")
-        .map((channel) => channel.name);
+    // Get all selected channels
+    const selectedChannels = await Promise.all(messageData.channels.map((channelId) => Channel.findById(channelId)));
 
-      if (whatsappChannels.length > 0) {
-        // Send the message
-        const whatsappResults = await whatsappService.sendChannelMessages(messageData.content, whatsappChannels);
+    // Filter out any null results
+    const validChannels = selectedChannels.filter((channel) => channel);
+
+    if (validChannels.length === 0) {
+      throw new Error("No valid channels selected");
+    }
+
+    // Group channels by platform
+    const whatsappChannels = validChannels.filter((channel) => channel.platform === "whatsapp");
+    const telegramChannels = validChannels.filter((channel) => channel.platform === "telegram");
+
+    // Log which platforms we're using
+    const platforms = [];
+    if (whatsappChannels.length > 0) platforms.push("WhatsApp");
+    if (telegramChannels.length > 0) platforms.push("Telegram");
+
+    logger.info(`Sending message to ${validChannels.length} channels across ${platforms.join(" and ")}`);
+
+    // Process WhatsApp messages
+    if (whatsappChannels.length > 0) {
+      try {
+        logger.info(`Sending to ${whatsappChannels.length} WhatsApp channels`);
+        const whatsappContent = messageData.formattedContent?.whatsapp || messageData.content;
+
+        const whatsappResults = await whatsappService.sendChannelMessages(
+          whatsappContent,
+          whatsappChannels.map((c) => c.name)
+        );
 
         results.push(...whatsappResults);
+      } catch (whatsappError) {
+        logger.error("Error sending WhatsApp messages:", whatsappError);
+        results.push({
+          platform: "whatsapp",
+          status: "failed",
+          error: whatsappError.message,
+          timestamp: new Date(),
+        });
       }
     }
 
-    // Process Telegram messages (placeholder for future)
-    if (messageData.platforms.includes("telegram") || messageData.platforms.includes("both")) {
-      await broadcastMessage(messageData.content);
-      logger.info("Telegram sending is not implemented yet");
+    // Process Telegram messages
+    if (telegramChannels.length > 0) {
+      try {
+        logger.info(`Sending to ${telegramChannels.length} Telegram channels`);
+        const telegramContent = messageData.formattedContent?.telegram || messageData.content;
+
+        const telegramResults = await telegramService.sendChannelMessages(telegramContent, telegramChannels);
+
+        results.push(...telegramResults);
+      } catch (telegramError) {
+        logger.error("Error sending Telegram messages:", telegramError);
+        results.push({
+          platform: "telegram",
+          status: "failed",
+          error: telegramError.message,
+          timestamp: new Date(),
+        });
+      }
     }
 
     // Update message with results
@@ -153,10 +225,10 @@ async function sendImmediately(messageData) {
     message.sentAt = new Date();
     await message.save();
 
-    logger.info(`Immediate message ${message._id} sent successfully`);
+    logger.info(`Message ${message._id} sent with ${results.length} delivery results`);
     return message;
   } catch (error) {
-    logger.error("Error sending immediate message:", error);
+    logger.error("Error sending message:", error);
     throw error;
   }
 }

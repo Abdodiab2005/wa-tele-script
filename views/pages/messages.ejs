@@ -1,99 +1,279 @@
 <div class="row">
-  <div class="col-lg-8 mx-auto">
-    <h2 class="mb-4">Send Messages</h2>
+  <div class="col-lg-9 mx-auto">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2>Message Composer</h2>
+      <a href="/history" class="btn btn-outline-secondary"> <i class="bi bi-clock-history"></i> Message History </a>
+    </div>
 
-    <!-- Message Form -->
-    <div class="card mb-4">
+    <!-- Message Composition Card -->
+    <div class="card shadow-sm mb-4">
       <div class="card-header bg-primary text-white">
         <h5 class="mb-0">Compose Message</h5>
       </div>
       <div class="card-body">
         <form id="message-form">
-          <!-- Message Content -->
-          <div class="mb-3">
-            <label for="message-content" class="form-label">Message Content</label>
+          <!-- Message Content Section -->
+          <div class="mb-4">
+            <label for="message-content" class="form-label fw-bold">Message Content</label>
+
+            <!-- Formatting Toolbar -->
+            <div class="btn-group mb-2">
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-bold" title="Bold">
+                <i class="bi bi-type-bold"></i>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-italic" title="Italic">
+                <i class="bi bi-type-italic"></i>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-strike" title="Strikethrough">
+                <i class="bi bi-type-strikethrough"></i>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-code" title="Code">
+                <i class="bi bi-code"></i>
+              </button>
+            </div>
+
+            <!-- Message Textarea -->
             <textarea
               class="form-control"
               id="message-content"
               rows="5"
               placeholder="Enter your message here..."></textarea>
-          </div>
 
-          <!-- Platform Selection -->
-          <div class="mb-3">
-            <label class="form-label">Platforms</label>
-            <div class="d-flex gap-3">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" value="whatsapp" id="platform-whatsapp" checked />
-                <label class="form-check-label" for="platform-whatsapp"> WhatsApp </label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" value="telegram" id="platform-telegram" />
-                <label class="form-check-label" for="platform-telegram"> Telegram </label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" value="both" id="platform-both" />
-                <label class="form-check-label" for="platform-both"> Both </label>
-              </div>
+            <div class="form-text">
+              Formatting: Use <strong>**bold**</strong>, <em>_italic_</em>, <s>~~strikethrough~~</s>, and `code` for
+              rich text formatting.
             </div>
           </div>
 
-          <!-- Channel Selection (WhatsApp) -->
-          <div class="mb-3" id="whatsapp-channels-container">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <label class="form-label">WhatsApp Channels</label>
-              <button type="button" id="refresh-channels-btn" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-arrow-clockwise"></i> Refresh Channels
-              </button>
-            </div>
-
-            <div class="channels-list">
-              <% const whatsappChannels = channels.filter(c => c.platform === 'whatsapp' && c.isAdmin); %> <% if
-              (whatsappChannels.length === 0) { %>
-              <div class="alert alert-info">
-                No WhatsApp channels found. Click "Refresh Channels" to scan for channels.
-              </div>
-              <% } else { %>
-              <div class="list-group">
-                <% whatsappChannels.forEach(channel => { %>
-                <label class="list-group-item">
-                  <input
-                    class="form-check-input me-1 channel-checkbox"
-                    type="checkbox"
-                    value="<%= channel._id %>"
-                    data-platform="whatsapp" />
-                  <%= channel.name %>
-                </label>
-                <% }); %>
-              </div>
-              <% } %>
-            </div>
+          <!-- Formatting Preview -->
+          <div id="format-preview" class="mb-4" style="display: none">
+            <h6 class="fw-bold text-muted">Message Preview:</h6>
+            <div id="format-preview-content" class="border rounded p-3 bg-light"></div>
           </div>
 
-          <!-- Telegram Channels (Placeholder) -->
-          <div class="mb-3" id="telegram-channels-container" style="display: none">
-            <label class="form-label">Telegram Channels</label>
-            <div class="alert alert-warning">Telegram integration will be available in a future update.</div>
-          </div>
+          <div class="row">
+            <!-- Channel Selection Column -->
+            <div class="col-md-8">
+              <div class="mb-4">
+                <label class="form-label fw-bold">Select Channels</label>
 
-          <!-- Schedule Options -->
-          <div class="mb-3">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="schedule-toggle" />
-              <label class="form-check-label" for="schedule-toggle">Schedule for later</label>
+                <!-- Tabs for platforms -->
+                <ul class="nav nav-tabs" id="channelTabs" role="tablist">
+                  <li class="nav-item" role="presentation">
+                    <button
+                      class="nav-link active"
+                      id="whatsapp-tab"
+                      data-bs-toggle="tab"
+                      data-bs-target="#whatsapp-channels"
+                      type="button"
+                      role="tab"
+                      aria-selected="true">
+                      <i class="bi bi-whatsapp text-success"></i> WhatsApp Channels
+                    </button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button
+                      class="nav-link"
+                      id="telegram-tab"
+                      data-bs-toggle="tab"
+                      data-bs-target="#telegram-channels"
+                      type="button"
+                      role="tab"
+                      aria-selected="false">
+                      <i class="bi bi-telegram text-primary"></i> Telegram Channels
+                    </button>
+                  </li>
+                </ul>
+
+                <!-- Tab content -->
+                <div class="tab-content border border-top-0 rounded-bottom p-3" id="channelTabsContent">
+                  <!-- WhatsApp Channels -->
+                  <div
+                    class="tab-pane fade show active"
+                    id="whatsapp-channels"
+                    role="tabpanel"
+                    aria-labelledby="whatsapp-tab">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <span class="text-muted small">Select the WhatsApp channels to send to</span>
+                      <button type="button" id="refresh-channels-btn" class="btn btn-sm btn-outline-success">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh Channels
+                      </button>
+                    </div>
+
+                    <!-- Add Select All checkbox -->
+                    <div class="mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="select-all-whatsapp" />
+                        <label class="form-check-label fw-bold" for="select-all-whatsapp">
+                          Select All WhatsApp Channels
+                        </label>
+                      </div>
+                    </div>
+
+                    <!-- Channel List -->
+                    <div class="channels-list">
+                      <% if (whatsappChannels.length === 0) { %>
+                      <div class="alert alert-info">
+                        No WhatsApp channels found. Click "Refresh Channels" to scan for channels.
+                      </div>
+                      <% } else { %>
+                      <div class="channel-list-container">
+                        <% whatsappChannels.forEach(channel => { %>
+                        <div class="form-check">
+                          <input
+                            class="form-check-input channel-checkbox"
+                            type="checkbox"
+                            id="whatsapp-<%= channel._id %>"
+                            value="<%= channel._id %>"
+                            data-platform="whatsapp"
+                            data-name="<%= channel.name %>" />
+                          <label class="form-check-label" for="whatsapp-<%= channel._id %>">
+                            <%= channel.name %>
+                            <span class="badge bg-success">WhatsApp</span>
+                          </label>
+                        </div>
+                        <% }); %>
+                      </div>
+                      <% } %>
+                    </div>
+                  </div>
+
+                  <!-- Telegram Channels -->
+                  <div class="tab-pane fade" id="telegram-channels" role="tabpanel" aria-labelledby="telegram-tab">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <span class="text-muted small">Select the Telegram channels to send to</span>
+                      <button type="button" id="add-telegram-channel-btn" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-plus"></i> Add Channel
+                      </button>
+                    </div>
+
+                    <!-- Add Select All checkbox -->
+                    <div class="mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="select-all-telegram" />
+                        <label class="form-check-label fw-bold" for="select-all-telegram">
+                          Select All Telegram Channels
+                        </label>
+                      </div>
+                    </div>
+
+                    <!-- Channel List -->
+                    <% if (!telegramConfigured) { %>
+                    <div class="alert alert-warning">
+                      <i class="bi bi-exclamation-triangle"></i>
+                      Telegram bot token not configured. Please set it up in the
+                      <a href="/connect" class="alert-link">Connect page</a>.
+                    </div>
+                    <% } else if (telegramChannels.length === 0) { %>
+                    <div class="alert alert-info">
+                      <i class="bi bi-info-circle"></i>
+                      No Telegram channels found. Add channels using the "Add Channel" button.
+                    </div>
+                    <% } else { %>
+                    <div class="channel-list-container">
+                      <% telegramChannels.forEach(channel => { %>
+                      <div class="form-check">
+                        <input
+                          class="form-check-input channel-checkbox"
+                          type="checkbox"
+                          id="telegram-<%= channel._id %>"
+                          value="<%= channel._id %>"
+                          data-platform="telegram"
+                          data-name="<%= channel.name %>" />
+                        <label class="form-check-label" for="telegram-<%= channel._id %>">
+                          <%= channel.name %>
+                          <span class="badge bg-primary">Telegram</span>
+                          <% if (channel.description) { %>
+                          <small class="text-muted d-block"><%= channel.description %></small>
+                          <% } %>
+                        </label>
+                      </div>
+                      <% }); %>
+                    </div>
+                    <% } %>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div id="schedule-controls" class="mt-2" style="display: none">
-              <label for="schedule-datetime" class="form-label">Schedule Date/Time</label>
-              <input type="datetime-local" class="form-control" id="schedule-datetime" />
+            <!-- Scheduling Column -->
+            <div class="col-md-4">
+              <!-- Schedule Options -->
+              <div class="mb-4">
+                <label class="form-label fw-bold">Delivery Options</label>
+                <div class="card">
+                  <div class="card-body">
+                    <div class="form-check form-switch mb-3">
+                      <input class="form-check-input" type="checkbox" id="schedule-toggle" />
+                      <label class="form-check-label" for="schedule-toggle">Schedule for later</label>
+                    </div>
+
+                    <div id="schedule-controls" class="mb-3" style="display: none">
+                      <label for="schedule-datetime" class="form-label">Select Date & Time</label>
+                      <input type="datetime-local" class="form-control" id="schedule-datetime" />
+                    </div>
+
+                    <!-- Cross-platform alert -->
+                    <div id="cross-platform-alert" class="alert alert-info mt-3 d-none">
+                      <small>
+                        <i class="bi bi-info-circle-fill"></i>
+                        You've selected both WhatsApp and Telegram channels. The message will be sent to all selected
+                        channels with appropriate formatting for each platform.
+                      </small>
+                    </div>
+
+                    <!-- Channel Summary -->
+                    <div class="mt-3">
+                      <h6 class="text-muted">Selected Channels: <span id="selected-count">0</span></h6>
+                      <div id="selected-channels-summary" class="small"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           <!-- Submit Button -->
-          <div class="text-end">
-            <button type="submit" class="btn btn-primary">Send Message</button>
+          <div class="text-end mt-3">
+            <button type="submit" class="btn btn-primary btn-lg"><i class="bi bi-send"></i> Send Message</button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Telegram Channel Modal -->
+<div class="modal fade" id="addTelegramChannelModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add Telegram Channel</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="telegram-channel-form">
+          <div class="mb-3">
+            <label for="channel-name" class="form-label">Channel Name</label>
+            <input type="text" class="form-control" id="channel-name" required />
+            <div class="form-text">Enter a descriptive name for this channel</div>
+          </div>
+
+          <div class="mb-3">
+            <label for="chat-id" class="form-label">Chat ID</label>
+            <input type="text" class="form-control" id="chat-id" required />
+            <div class="form-text">The Telegram chat ID where messages will be sent</div>
+          </div>
+
+          <div class="mb-3">
+            <label for="channel-description" class="form-label">Description (Optional)</label>
+            <textarea class="form-control" id="channel-description" rows="2"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="save-telegram-channel">Save Channel</button>
       </div>
     </div>
   </div>
@@ -116,7 +296,7 @@
 
 <!-- Result Modal -->
 <div class="modal fade" id="resultModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="result-title">Message Status</h5>
@@ -133,46 +313,84 @@
   </div>
 </div>
 
-<!-- Bootstrap JavaScript Bundle with Popper -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/formatter.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
   // Initialize Bootstrap components
   const loadingModal = new bootstrap.Modal(document.getElementById("loadingModal"));
   const resultModal = new bootstrap.Modal(document.getElementById("resultModal"));
-
-  // Handle platform selection
-  document.querySelectorAll("#platform-whatsapp, #platform-telegram, #platform-both").forEach((checkbox) => {
-    checkbox.addEventListener("change", function () {
-      const whatsappContainer = document.getElementById("whatsapp-channels-container");
-      const telegramContainer = document.getElementById("telegram-channels-container");
-
-      if (this.id === "platform-both" && this.checked) {
-        document.getElementById("platform-whatsapp").checked = false;
-        document.getElementById("platform-telegram").checked = false;
-        whatsappContainer.style.display = "block";
-        telegramContainer.style.display = "block";
-      } else {
-        document.getElementById("platform-both").checked = false;
-
-        if (document.getElementById("platform-whatsapp").checked || document.getElementById("platform-both").checked) {
-          whatsappContainer.style.display = "block";
-        } else {
-          whatsappContainer.style.display = "none";
-        }
-
-        if (document.getElementById("platform-telegram").checked || document.getElementById("platform-both").checked) {
-          telegramContainer.style.display = "block";
-        } else {
-          telegramContainer.style.display = "none";
-        }
-      }
-    });
-  });
+  const addTelegramChannelModal = new bootstrap.Modal(document.getElementById("addTelegramChannelModal"));
 
   // Handle schedule toggle
   document.getElementById("schedule-toggle").addEventListener("change", function () {
     document.getElementById("schedule-controls").style.display = this.checked ? "block" : "none";
+  });
+
+  // Handle add Telegram channel button
+  document.getElementById("add-telegram-channel-btn")?.addEventListener("click", function () {
+    document.getElementById("telegram-channel-form").reset();
+    addTelegramChannelModal.show();
+  });
+
+  // Handle save Telegram channel
+  document.getElementById("save-telegram-channel")?.addEventListener("click", async function () {
+    const nameInput = document.getElementById("channel-name");
+    const chatIdInput = document.getElementById("chat-id");
+    const descriptionInput = document.getElementById("channel-description");
+
+    if (!nameInput.value || !chatIdInput.value) {
+      alert("Name and Chat ID are required");
+      return;
+    }
+
+    try {
+      // Show loading
+      loadingModal.show();
+      addTelegramChannelModal.hide();
+
+      const response = await fetch("/messages/telegram-channel", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: nameInput.value,
+          chatId: chatIdInput.value,
+          description: descriptionInput.value,
+        }),
+      });
+
+      const data = await response.json();
+      loadingModal.hide();
+
+      if (data.success) {
+        // Show success and refresh page
+        document.getElementById("result-title").textContent = "Channel Added";
+        document.getElementById("result-body").innerHTML = `
+          <div class="alert alert-success">
+            <strong>Success!</strong> Telegram channel "${data.channel.name}" has been added.
+          </div>
+          <p>The page will refresh to show the new channel.</p>
+        `;
+        resultModal.show();
+
+        // Refresh page after 2 seconds
+        setTimeout(() => window.location.reload(), 2000);
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (error) {
+      loadingModal.hide();
+
+      document.getElementById("result-title").textContent = "Error";
+      document.getElementById("result-body").innerHTML = `
+        <div class="alert alert-danger">
+          ${error.message || "Failed to add Telegram channel"}
+        </div>
+      `;
+      resultModal.show();
+    }
   });
 
   // Handle refresh channels button
@@ -184,12 +402,12 @@
         "This may take a minute. Please keep the browser window open.";
       loadingModal.show();
 
-      // Make API request to refresh channels
       const response = await fetch("/messages/refresh-channels", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({}),
       });
 
       const data = await response.json();
@@ -207,10 +425,10 @@
       // Show error in result modal
       document.getElementById("result-title").textContent = "Error Refreshing Channels";
       document.getElementById("result-body").innerHTML = `
-                <div class="alert alert-danger">
-                    ${error.message || "Failed to refresh channels. Please try again."}
-                </div>
-            `;
+        <div class="alert alert-danger">
+          ${error.message || "Failed to refresh channels. Please try again."}
+        </div>
+      `;
       resultModal.show();
     }
   });
@@ -223,11 +441,8 @@
       // Get form values
       const content = document.getElementById("message-content").value.trim();
 
-      // Get selected platforms
-      const platforms = [];
-      if (document.getElementById("platform-whatsapp").checked) platforms.push("whatsapp");
-      if (document.getElementById("platform-telegram").checked) platforms.push("telegram");
-      if (document.getElementById("platform-both").checked) platforms.push("both");
+      // Format message for both platforms
+      const formattedContent = TextFormatter.formatMessage(content);
 
       // Get selected channels
       const selectedChannels = Array.from(document.querySelectorAll(".channel-checkbox:checked")).map(
@@ -241,11 +456,6 @@
       // Validate form
       if (!content) {
         alert("Please enter a message");
-        return;
-      }
-
-      if (platforms.length === 0) {
-        alert("Please select at least one platform");
         return;
       }
 
@@ -274,7 +484,7 @@
         },
         body: JSON.stringify({
           content,
-          platforms,
+          formattedContent,
           channels: selectedChannels,
           scheduleTime,
         }),
@@ -285,24 +495,49 @@
       // Hide loading modal
       loadingModal.hide();
 
-      // Show result modal
+      // Show result modal with detailed results
       if (data.success) {
-        document.getElementById("result-title").textContent = isScheduled ? "Message Scheduled" : "Message Sent";
-        document.getElementById("result-body").innerHTML = `
-                    <div class="alert alert-success">
-                        ${data.message}
-                    </div>
-                `;
+        const resultTitle = isScheduled ? "Message Scheduled" : "Message Sent";
+        let resultContent = `<div class="alert alert-success mb-4">${data.message}</div>`;
+
+        // If we have detailed results, show them
+        if (data.data?.results?.length > 0) {
+          resultContent += "<h6>Delivery Results:</h6>";
+          resultContent += '<div class="table-responsive"><table class="table table-sm table-bordered">';
+          resultContent += "<thead><tr><th>Channel</th><th>Platform</th><th>Status</th><th>Details</th></tr></thead>";
+          resultContent += "<tbody>";
+
+          data.data.results.forEach((result) => {
+            const statusClass = result.status === "success" ? "success" : "danger";
+            resultContent += `
+              <tr>
+                <td>${result.channel || "Unknown"}</td>
+                <td><span class="badge bg-${result.platform === "whatsapp" ? "success" : "primary"}">${
+              result.platform
+            }</span></td>
+                <td><span class="badge bg-${statusClass}">${result.status}</span></td>
+                <td>${result.error || "Message delivered successfully"}</td>
+              </tr>
+            `;
+          });
+
+          resultContent += "</tbody></table></div>";
+        }
+
+        document.getElementById("result-title").textContent = resultTitle;
+        document.getElementById("result-body").innerHTML = resultContent;
 
         // Reset form
         this.reset();
+        document.getElementById("format-preview").style.display = "none";
+        updateSelectedChannelsSummary();
       } else {
         document.getElementById("result-title").textContent = "Error";
         document.getElementById("result-body").innerHTML = `
-                    <div class="alert alert-danger">
-                        ${data.message}
-                    </div>
-                `;
+          <div class="alert alert-danger">
+            ${data.message}
+          </div>
+        `;
       }
 
       resultModal.show();
@@ -313,11 +548,208 @@
       // Show error in result modal
       document.getElementById("result-title").textContent = "Error";
       document.getElementById("result-body").innerHTML = `
-                <div class="alert alert-danger">
-                    ${error.message || "Failed to process message. Please try again."}
-                </div>
-            `;
+        <div class="alert alert-danger">
+          ${error.message || "Failed to process message. Please try again."}
+        </div>
+      `;
       resultModal.show();
     }
+  });
+
+  // Function to preview formatted message
+  function previewFormatting() {
+    const content = document.getElementById("message-content").value;
+
+    // If content is empty, hide preview
+    if (!content.trim()) {
+      document.getElementById("format-preview").style.display = "none";
+      return;
+    }
+
+    // Use our formatter module to get formatted content
+    const formattedContent = TextFormatter.formatMessage(content);
+
+    // Update preview with tabs for different platforms
+    let previewHTML = `
+      <ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#preview-whatsapp" type="button" role="tab">
+            <i class="bi bi-whatsapp text-success"></i> WhatsApp
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#preview-telegram" type="button" role="tab">
+            <i class="bi bi-telegram text-primary"></i> Telegram
+          </button>
+        </li>
+      </ul>
+      <div class="tab-content mt-2">
+        <div class="tab-pane fade show active" id="preview-whatsapp" role="tabpanel">
+          <pre class="mb-0 p-2 bg-light rounded">${formattedContent.whatsapp}</pre>
+        </div>
+        <div class="tab-pane fade" id="preview-telegram" role="tabpanel">
+          <pre class="mb-0 p-2 bg-light rounded">${formattedContent.telegram}</pre>
+        </div>
+      </div>
+    `;
+
+    document.getElementById("format-preview-content").innerHTML = previewHTML;
+    document.getElementById("format-preview").style.display = "block";
+  }
+
+  // Function to insert formatting around selected text
+  function insertFormat(prefix, suffix) {
+    const textarea = document.getElementById("message-content");
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = textarea.value.substring(start, end);
+    const replacement = prefix + selectedText + suffix;
+
+    textarea.value = textarea.value.substring(0, start) + replacement + textarea.value.substring(end);
+    textarea.focus();
+    textarea.selectionStart = start + prefix.length;
+    textarea.selectionEnd = end + prefix.length;
+
+    // Update preview
+    previewFormatting();
+  }
+
+  // Function to update the selected channels summary
+  function updateSelectedChannelsSummary() {
+    const summaryElement = document.getElementById("selected-channels-summary");
+    const selectedChannels = document.querySelectorAll(".channel-checkbox:checked");
+    document.getElementById("selected-count").textContent = selectedChannels.length;
+
+    let whatsappCount = 0;
+    let telegramCount = 0;
+    let channelsList = "";
+
+    selectedChannels.forEach((channel) => {
+      const platform = channel.dataset.platform;
+      const name = channel.dataset.name || "Unnamed channel";
+
+      if (platform === "whatsapp") whatsappCount++;
+      if (platform === "telegram") telegramCount++;
+
+      channelsList += `<div><small>• ${name}</small></div>`;
+    });
+
+    let summary = "";
+    if (whatsappCount > 0) {
+      summary += `<span class="badge bg-success me-1">WhatsApp: ${whatsappCount}</span>`;
+    }
+    if (telegramCount > 0) {
+      summary += `<span class="badge bg-primary me-1">Telegram: ${telegramCount}</span>`;
+    }
+
+    summaryElement.innerHTML = `
+      <div class="mb-2">${summary}</div>
+      <div class="small text-muted" style="max-height: 100px; overflow-y: auto;">
+        ${channelsList}
+      </div>
+    `;
+
+    // Show cross-platform alert if both platforms are selected
+    if (whatsappCount > 0 && telegramCount > 0) {
+      document.getElementById("cross-platform-alert").classList.remove("d-none");
+    } else {
+      document.getElementById("cross-platform-alert").classList.add("d-none");
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // Add event listeners to the message-content textarea
+    const messageContent = document.getElementById("message-content");
+    if (messageContent) {
+      messageContent.addEventListener("input", previewFormatting);
+
+      // Add event listeners to formatting buttons
+      document.getElementById("btn-bold").addEventListener("click", function () {
+        insertFormat("**", "**"); // Double asterisks for our formatter
+      });
+
+      document.getElementById("btn-italic").addEventListener("click", function () {
+        insertFormat("_", "_");
+      });
+
+      document.getElementById("btn-strike").addEventListener("click", function () {
+        insertFormat("~~", "~~"); // Double tilde for our formatter
+      });
+
+      document.getElementById("btn-code").addEventListener("click", function () {
+        insertFormat("`", "`"); // Single backtick as formatter will convert appropriately
+      });
+    }
+
+    // Add event listeners to all channel checkboxes
+    document.querySelectorAll(".channel-checkbox").forEach((checkbox) => {
+      checkbox.addEventListener("change", updateSelectedChannelsSummary);
+    });
+
+    // Add event listeners to select-all checkboxes
+    document.getElementById("select-all-whatsapp")?.addEventListener("change", function () {
+      const whatsappCheckboxes = document.querySelectorAll(".channel-checkbox[data-platform='whatsapp']");
+      whatsappCheckboxes.forEach((checkbox) => (checkbox.checked = this.checked));
+      updateSelectedChannelsSummary();
+    });
+
+    document.getElementById("select-all-telegram")?.addEventListener("change", function () {
+      const telegramCheckboxes = document.querySelectorAll(".channel-checkbox[data-platform='telegram']");
+      telegramCheckboxes.forEach((checkbox) => (checkbox.checked = this.checked));
+      updateSelectedChannelsSummary();
+    });
+
+    // Restore channels from localStorage if any were previously selected
+    try {
+      const savedChannels = localStorage.getItem("selectedChannels");
+      if (savedChannels) {
+        const channelIds = JSON.parse(savedChannels);
+        channelIds.forEach((id) => {
+          const checkbox = document.querySelector(`.channel-checkbox[value="${id}"]`);
+          if (checkbox) checkbox.checked = true;
+        });
+        updateSelectedChannelsSummary();
+      }
+    } catch (error) {
+      console.error("Error restoring selected channels:", error);
+    }
+
+    // Add event listeners to all channel checkboxes for saving
+    document.querySelectorAll(".channel-checkbox").forEach((checkbox) => {
+      checkbox.addEventListener("change", function () {
+        updateSelectedChannelsSummary();
+
+        // Save selected channels to localStorage
+        try {
+          const selectedChannels = Array.from(document.querySelectorAll(".channel-checkbox:checked")).map(
+            (cb) => cb.value
+          );
+          localStorage.setItem("selectedChannels", JSON.stringify(selectedChannels));
+        } catch (error) {
+          console.error("Error saving selected channels:", error);
+        }
+      });
+    });
+
+    // Add event listeners for tab changes
+    document.querySelectorAll('button[data-bs-toggle="tab"]').forEach((tab) => {
+      tab.addEventListener("shown.bs.tab", function () {
+        // Remember the active tab
+        localStorage.setItem("activeChannelTab", this.id);
+      });
+    });
+
+    // Restore active tab
+    const activeTab = localStorage.getItem("activeChannelTab");
+    if (activeTab) {
+      const tabElement = document.getElementById(activeTab);
+      if (tabElement) {
+        const tab = new bootstrap.Tab(tabElement);
+        tab.show();
+      }
+    }
+
+    // Initialize channel summary
+    updateSelectedChannelsSummary();
   });
 </script>

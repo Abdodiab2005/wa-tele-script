@@ -5,6 +5,10 @@ const messageSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  formattedContent: {
+    whatsapp: String,
+    telegram: String,
+  },
   platforms: {
     type: [String],
     enum: ["whatsapp", "telegram", "both"],

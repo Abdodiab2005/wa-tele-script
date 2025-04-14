@@ -16,9 +16,21 @@ const channelSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    chatId: {
+      type: String,
+      default: null,
+    },
     lastUpdated: {
       type: Date,
       default: Date.now,
+    },
+    description: {
+      type: String,
+      default: "",
+    },
+    enabled: {
+      type: Boolean,
+      default: true,
     },
   },
   {
@@ -28,12 +40,6 @@ const channelSchema = new mongoose.Schema(
 
 // Create a compound index on name and platform for uniqueness
 channelSchema.index({ name: 1, platform: 1 }, { unique: true });
-
-// Add pre-save hook for debugging
-channelSchema.pre("save", function (next) {
-  console.log(`Saving channel: ${this.name} (${this.platform}), isAdmin: ${this.isAdmin}`);
-  next();
-});
 
 const Channel = mongoose.model("Channel", channelSchema);
 
