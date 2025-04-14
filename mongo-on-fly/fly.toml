@@ -4,6 +4,20 @@ primary_region = "cdg"
 [env]
   MONGO_INITDB_ROOT_USERNAME = "admin"
   MONGO_INITDB_ROOT_PASSWORD = "mypassword"
+  PORT = "3000"
+
+[[services]]
+  internal_port = 3000
+  protocol = "tcp"
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
 
 [[mounts]]
   source = "mongo_data"
